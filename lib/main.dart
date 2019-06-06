@@ -22,8 +22,13 @@ class HomePage extends StatefulWidget {
 }
 
 class _HomePageState extends State<HomePage> {
-  Future<List<Jadwal>> jadwalSolat() async{
-    Response response = await get('https://muslimsalat.com/pekanbaru/daily.json?key=b542043bed6c46005ed159025beb76b9');
+  String kota = 'pekanbaru';
+  TextEditingController kotaController = TextEditingController();
+
+  Future<List<Jadwal>> newJadwalSolat;
+
+  Future<List<Jadwal>> jadwalSolat(String kota) async{
+    Response response = await get('https://muslimsalat.com/$kota/daily.json?key=b542043bed6c46005ed159025beb76b9');
     var res = json.decode(response.body);
     List<Jadwal> solat = [];
     solat.add(Jadwal(namaSolat: 'Subuh', waktu: res['items'][0]['fajr']));
@@ -38,32 +43,59 @@ class _HomePageState extends State<HomePage> {
   }
   
   @override
+  void initState() {
+    super.initState();
+    newJadwalSolat = jadwalSolat(kota);
+  }
+
+  @override
   Widget build(BuildContext context){
     return Scaffold(
       appBar: AppBar(
         backgroundColor: Colors.green[900],
         title: Text("Beautify Adzan"),
       ),
-      body: FutureBuilder(
-        future: jadwalSolat(),
-        builder:  (context, snapshot) {
-          if (snapshot.data == null) {
-            return Center(
-              child: CircularProgressIndicator(),
-            );
-          } else {
-            return ListView.builder(
-              itemCount: snapshot.data.length,
-              itemBuilder: (BuildContext context, int i) {
-                return ListTile(
-                  title: Text('${snapshot.data[i].namaSolat}'),
-                  subtitle: Text('${snapshot.data[i].waktu}')
-                );
+      body: ListView(
+        children: <Widget>[
+          Container(
+            padding: EdgeInsets.all(16.0),
+            child: TextField(
+              controller: kotaController,
+              decoration: InputDecoration(
+                hintText: 'Isi Nama Kota',
+              ),
+              onSubmitted: (text) {
+                setState(() {
+                 newJadwalSolat = jadwalSolat(text); 
+                });
               },
-            );
-          }
-        },
-      ), 
+            ),
+          ),
+          Container(
+            height: 500.0,
+            child: FutureBuilder(
+              future: newJadwalSolat,
+              builder:  (context, snapshot) {
+                if (snapshot.data == null) {
+                  return Center(
+                    child: CircularProgressIndicator(),
+                  );
+                } else {
+                  return ListView.builder(
+                    itemCount: snapshot.data.length,
+                    itemBuilder: (BuildContext context, int i) {
+                      return ListTile(
+                        title: Text('${snapshot.data[i].namaSolat}'),
+                        subtitle: Text('${snapshot.data[i].waktu}')
+                      );
+                    }
+                  );
+                }
+              },
+            ),
+          ),
+        ],
+      ),
     );
   }
 }
