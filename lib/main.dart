@@ -23,13 +23,13 @@ class HomePage extends StatefulWidget {
 
 class _HomePageState extends State<HomePage> {
   String kota = 'pekanbaru';
-  TextEditingController kotaController = TextEditingController();
-
+  Future<Location> newLocation;
   Future<List<Jadwal>> newJadwalSolat;
 
   Future<List<Jadwal>> jadwalSolat(String kota) async{
     Response response = await get('https://muslimsalat.com/$kota/daily.json?key=b542043bed6c46005ed159025beb76b9');
     var res = json.decode(response.body);
+    
     List<Jadwal> solat = [];
     solat.add(Jadwal(namaSolat: 'Subuh', waktu: res['items'][0]['fajr']));
     solat.add(Jadwal(namaSolat: 'Zuhur', waktu: res['items'][0]['dhuhr']));
@@ -41,11 +41,23 @@ class _HomePageState extends State<HomePage> {
     }
     return solat;
   }
+
+  Future<Location> getLocation(String kota) async{
+    Response response = await get('https://muslimsalat.com/$kota/daily.json?key=b542043bed6c46005ed159025beb76b9');
+    var res = json.decode(response.body);
+    
+    Location negara;
+    negara = Location(kota: res['city'], negara: res['country']);
+    return negara;
+  }
   
+  TextEditingController kotaController = TextEditingController();
+
   @override
   void initState() {
     super.initState();
     newJadwalSolat = jadwalSolat(kota);
+    newLocation = getLocation(kota);
   }
 
   @override
@@ -63,12 +75,38 @@ class _HomePageState extends State<HomePage> {
               controller: kotaController,
               decoration: InputDecoration(
                 hintText: 'Isi Nama Kota',
+                icon: Icon(Icons.location_city),
               ),
               onSubmitted: (text) {
                 setState(() {
-                 newJadwalSolat = jadwalSolat(text); 
+                 kota = text[0].toUpperCase() + text.substring(1);
+                 newJadwalSolat = jadwalSolat(text);
+                 newLocation = getLocation(text);
                 });
               },
+            ),
+          ),
+          Container(
+            padding: EdgeInsets.symmetric(vertical: 8.0, horizontal: 16.0),
+            child: FutureBuilder(
+              future: newLocation,
+              builder: (context, snapshot) {
+                if(snapshot.connectionState == ConnectionState.done){
+                  if (snapshot.data == null) {
+                    return Container(height: 0.0);
+                  } else {
+                    return Text(
+                      'Menampilkan Kota ${kota}, ${snapshot.data.negara}',
+                      style: TextStyle(
+                        fontWeight: FontWeight.bold,
+                      ),
+                      textAlign: TextAlign.center,
+                    );
+                  }
+                } else {
+                  return Container(height: 0.0);
+                }
+              }
             ),
           ),
           Container(
@@ -76,19 +114,25 @@ class _HomePageState extends State<HomePage> {
             child: FutureBuilder(
               future: newJadwalSolat,
               builder:  (context, snapshot) {
-                if (snapshot.data == null) {
-                  return Center(
-                    child: CircularProgressIndicator(),
-                  );
+                if(snapshot.connectionState == ConnectionState.done){
+                  if (snapshot.data == null) {
+                    return Center(
+                      child: Text('Mohon Maaf, silakan cari kota lain atau yang setara.'),
+                    );
+                  } else {
+                    return ListView.builder(
+                      itemCount: snapshot.data.length,
+                      itemBuilder: (BuildContext context, int i) {
+                        return ListTile(
+                          title: Text('${snapshot.data[i].namaSolat}'),
+                          subtitle: Text('${snapshot.data[i].waktu}')
+                        );
+                      }
+                    );
+                  }
                 } else {
-                  return ListView.builder(
-                    itemCount: snapshot.data.length,
-                    itemBuilder: (BuildContext context, int i) {
-                      return ListTile(
-                        title: Text('${snapshot.data[i].namaSolat}'),
-                        subtitle: Text('${snapshot.data[i].waktu}')
-                      );
-                    }
+                  return Center(
+                      child: CircularProgressIndicator(),
                   );
                 }
               },
@@ -99,6 +143,14 @@ class _HomePageState extends State<HomePage> {
     );
   }
 }
+
+class Location{
+  String kota; 
+  String negara;
+
+  Location({this.kota, this.negara});
+}
+
 
 class Jadwal{
   String namaSolat;
