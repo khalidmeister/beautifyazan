@@ -1,6 +1,8 @@
-import 'package:beautifyadzan/jadwal.dart';
 import 'package:flutter/material.dart';
-import 'waktu_solat.dart';
+import 'azan_logic.dart';
+import 'location.dart';
+import 'jadwal.dart';
+import 'dart:async';
 import 'dart:convert';
 import 'package:http/http.dart';
 
@@ -22,42 +24,18 @@ class HomePage extends StatefulWidget {
 }
 
 class _HomePageState extends State<HomePage> {
-  String kota = 'pekanbaru';
+  AzanLogic azanLogic = AzanLogic();
+  String kota = 'Pekanbaru';
   Future<Location> newLocation;
   Future<List<Jadwal>> newJadwalSolat;
-
-  Future<List<Jadwal>> jadwalSolat(String kota) async{
-    Response response = await get('https://muslimsalat.com/$kota/daily.json?key=b542043bed6c46005ed159025beb76b9');
-    var res = json.decode(response.body);
-    
-    List<Jadwal> solat = [];
-    solat.add(Jadwal(namaSolat: 'Subuh', waktu: res['items'][0]['fajr']));
-    solat.add(Jadwal(namaSolat: 'Zuhur', waktu: res['items'][0]['dhuhr']));
-    solat.add(Jadwal(namaSolat: 'Ashar', waktu: res['items'][0]['asr']));
-    solat.add(Jadwal(namaSolat: 'Maghrib', waktu: res['items'][0]['maghrib']));
-    solat.add(Jadwal(namaSolat: 'Isya', waktu: res['items'][0]['isha']));
-    for(var i in solat){
-      print('${i.namaSolat} ${i.waktu}');
-    }
-    return solat;
-  }
-
-  Future<Location> getLocation(String kota) async{
-    Response response = await get('https://muslimsalat.com/$kota/daily.json?key=b542043bed6c46005ed159025beb76b9');
-    var res = json.decode(response.body);
-    
-    Location negara;
-    negara = Location(kota: res['city'], negara: res['country']);
-    return negara;
-  }
   
   TextEditingController kotaController = TextEditingController();
 
   @override
   void initState() {
     super.initState();
-    newJadwalSolat = jadwalSolat(kota);
-    newLocation = getLocation(kota);
+    newJadwalSolat = azanLogic.jadwalSolat(kota);
+    newLocation = azanLogic.getLocation(kota);
   }
 
   @override
@@ -80,8 +58,8 @@ class _HomePageState extends State<HomePage> {
               onSubmitted: (text) {
                 setState(() {
                  kota = text[0].toUpperCase() + text.substring(1);
-                 newJadwalSolat = jadwalSolat(text);
-                 newLocation = getLocation(text);
+                 newJadwalSolat = azanLogic.jadwalSolat(text);
+                 newLocation = azanLogic.getLocation(text);
                 });
               },
             ),
@@ -92,7 +70,7 @@ class _HomePageState extends State<HomePage> {
               future: newLocation,
               builder: (context, snapshot) {
                 if(snapshot.connectionState == ConnectionState.done){
-                  if (snapshot.data == null) {
+                  if (snapshot.data.negara == null) {
                     return Container(height: 0.0);
                   } else {
                     return Text(
@@ -143,19 +121,3 @@ class _HomePageState extends State<HomePage> {
     );
   }
 }
-
-class Location{
-  String kota; 
-  String negara;
-
-  Location({this.kota, this.negara});
-}
-
-
-class Jadwal{
-  String namaSolat;
-  String waktu;
-  
-  Jadwal({this.namaSolat, this.waktu});
-}
-
